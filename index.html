@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neptune | Experience the Deep</title>
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='25' fill='none' stroke='%2300E5FF' stroke-width='6'/><ellipse cx='50' cy='50' rx='40' ry='12' fill='none' stroke='%2300E5FF' stroke-width='4' transform='rotate(-30 50 50)'/><text x='50' y='58' font-family='sans-serif' font-size='24' font-weight='bold' fill='%23ffffff' text-anchor='middle'>N</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            --bg-base: #050505;
+            --bg-surface: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --bg-panel: rgba(10, 10, 12, 0.9);
+            --accent: #00E5FF;
+            --accent-glow: rgba(0, 229, 255, 0.5);
+            --text-main: #ffffff;
+            --text-dim: #b3b3b3;
+            --danger: #ff0033;
+            --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        /* --- RESET & CURSOR --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; cursor: none; }
+        body { background-color: transparent; color: var(--text-main); overflow-x: hidden; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+        
+        /* Global Background Layer for Wallpapers */
+        #global-bg { position: fixed; inset: 0; z-index: -1; background-color: var(--bg-base); background-size: cover; background-position: center; transition: background-image 0.5s; }
+        #global-bg::after { content: ''; position: absolute; inset: 0; background: rgba(5, 5, 5, 0.85); backdrop-filter: blur(5px); }
+
+        #custom-cursor { position: fixed; width: 20px; height: 20px; border: 2px solid var(--accent); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: width 0.2s, height 0.2s, background-color 0.2s; mix-blend-mode: difference; }
+        #cursor-dot { position: fixed; width: 4px; height: 4px; background: white; border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
+
+        /* --- ANIMATIONS --- */
+        .hidden { display: none !important; }
+        .screen { transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out); }
+        .fade-out { opacity: 0; transform: translateY(-20px); pointer-events: none; }
+        .fade-in-init { opacity: 0; transform: translateY(20px); }
+
+        /* --- AUTHENTICATION --- */
+        .splash-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .brand-logo { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+        .brand-logo svg { width: 60px; filter: drop-shadow(0 0 15px var(--accent-glow)); }
+        .brand-logo h1 { font-size: 4.5rem; font-weight: 900; letter-spacing: -3px; }
+
+        .auth-container { background: var(--bg-panel); backdrop-filter: blur(20px); padding: 50px; border-radius: 12px; width: 450px; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; }
+        .auth-container h2 { font-size: 2.2rem; margin-bottom: 30px; }
+        
+        input { width: 100%; padding: 16px; margin-bottom: 20px; background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 6px; color: white; font-size: 1rem; transition: 0.3s; }
+        input:focus { border-color: var(--accent); outline: none; background: rgba(255,255,255,0.1); }
+        
+        .btn-main { width: 100%; padding: 16px; background: var(--accent); color: black; border-radius: 6px; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px; border: none; transition: 0.3s; }
+        .btn-main:hover { transform: scale(1.02); filter: brightness(1.1); }
+        
+        .plan-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .plan-opt { padding: 15px; border: 1px solid #444; border-radius: 6px; text-align: center; font-size: 0.9rem; transition: 0.3s; }
+        .plan-opt.active { border-color: var(--accent); background: rgba(0, 229, 255, 0.1); }
+
+        /* --- HOME INTERFACE --- */
+        nav { position: fixed; top: 0; width: 100%; padding: 20px 5%; display: flex; justify-content: space-between; align-items: center; z-index: 100; transition: background 0.3s, border 0.3s; }
+        nav.scrolled { background: rgba(5, 5, 5, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #222; }
+        
+        .nav-links { display: flex; gap: 30px; align-items: center; }
+        .nav-link { color: var(--text-dim); text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: 0.3s; }
+        .nav-link:hover, .nav-link.active { color: white; }
+
+        .search-box { position: relative; width: 250px; }
+        .search-box input { margin-bottom: 0; padding: 10px 15px 10px 40px; font-size: 0.9rem; border-radius: 20px; }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
+
+        /* --- HERO --- */
+        .hero { height: 90vh; position: relative; display: flex; align-items: center; padding: 0 5%; background-size: cover; background-position: center; border-radius: 0 0 40px 40px; overflow: hidden; }
+        .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, #000 10%, transparent 60%), linear-gradient(to bottom, transparent 60%, var(--bg-base) 100%); }
+        .hero-content { position: relative; z-index: 2; max-width: 700px; }
+        .hero-title { font-size: 6rem; font-weight: 900; line-height: 1; margin-bottom: 20px; text-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .hero-meta { display: flex; gap: 15px; margin-bottom: 20px; font-weight: 700; color: var(--accent); font-size: 1rem; }
+
+        /* --- CONTENT SYSTEM --- */
+        .content-section { padding: 40px 5%; position: relative; z-index: 10; margin-top: -80px; }
+        .row-container { margin-bottom: 50px; }
+        .row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .row-title { font-size: 1.6rem; font-weight: 700; border-left: 4px solid var(--accent); padding-left: 15px; }
+
+        .shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .card { position: relative; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; transition: 0.4s var(--ease-out); background: var(--bg-card); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .card:hover { transform: scale(1.05) translateY(-5px); z-index: 5; box-shadow: 0 20px 40px rgba(0,0,0,0.8); }
+        .card img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
+        .card-info { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; opacity: 0; transition: 0.3s; }
+        .card:hover .card-info { opacity: 1; }
+        
+        .btn-list-add { position: absolute; top: 15px; right: 15px; width: 35px; height: 35px; border-radius: 50%; background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: 0.3s; z-index: 20; }
+        .btn-list-add:hover { background: white; color: black; transform: scale(1.1); }
+        
+        .btn-more { position: absolute; top: 15px; left: 15px; width: 35px; height: 35px; border-radius: 50%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; padding-bottom: 5px; opacity: 0; transition: 0.3s; z-index: 20; }
+        .card:hover .btn-more { opacity: 1; }
+        .btn-more:hover { background: var(--accent); color: black; transform: scale(1.1); }
+
+        /* --- MODALS --- */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); z-index: 2000; opacity: 0; pointer-events: none; transition: 0.5s; display: flex; align-items: center; justify-content: center; }
+        .modal.active { opacity: 1; pointer-events: auto; }
+        .close-modal { position: absolute; top: 30px; right: 50px; font-size: 3rem; font-weight: 200; z-index: 2100; transition: 0.3s; }
+        .close-modal:hover { color: var(--accent); transform: rotate(90deg); }
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        /* Modal Panels (Episodes & Settings) */
+        .panel-container { background: var(--bg-surface); border: 1px solid #333; padding: 40px; border-radius: 12px; width: 500px; max-width: 90%; max-height: 80vh; overflow-y: auto; z-index: 2050; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        .panel-container h2 { margin-bottom: 20px; color: var(--accent); }
+        
+        .ep-row { padding: 15px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .ep-row:hover { background: rgba(255,255,255,0.05); }
+        .ep-row h4 { font-size: 1rem; margin-bottom: 5px; }
+        .ep-row span { font-size: 0.8rem; color: var(--text-dim); }
+        .ep-play-btn { padding: 8px 15px; background: rgba(255,255,255,0.1); border-radius: 4px; font-weight: 600; font-size: 0.8rem; transition: 0.3s; }
+        .ep-row:hover .ep-play-btn { background: var(--accent); color: black; }
+
+        /* Copyright Footer in Settings */
+        .copyright-box { margin-top: 30px; padding-top: 20px; border-top: 1px solid #333; font-size: 0.75rem; color: var(--text-dim); text-align: center; line-height: 1.6; }
+        .copyright-box span { color: var(--accent); font-weight: bold; }
+
+        #playback-info { position: absolute; top: 30px; left: 40px; z-index: 2100; pointer-events: none; }
+        #playback-info h2 { font-size: 1.5rem; text-shadow: 0 2px 10px rgba(0,0,0,0.8); margin-bottom: 5px; }
+        #playback-info p { font-size: 1rem; color: var(--accent); font-weight: bold; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); padding: 12px 30px; background: var(--accent); color: black; border-radius: 30px; font-weight: 700; transition: 0.5s var(--ease-out); z-index: 3000; box-shadow: 0 10px 20px rgba(0,229,255,0.3); }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+
+    </style>
+</head>
+<body>
+
+    <div id="global-bg"></div>
+
+    <div id="custom-cursor"></div>
+    <div id="cursor-dot"></div>
+
+    <div id="toast">Notification</div>
+
+    <div id="screen-splash" class="screen splash-wrap">
+        <div class="brand-logo">
+            <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="25" fill="none" stroke="#00E5FF" stroke-width="6"/><ellipse cx="50" cy="50" rx="40" ry="12" fill="none" stroke="#00E5FF" stroke-width="4" transform="rotate(-30 50 50)"/><text x="50" y="58" font-family="Inter" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">N</text></svg>
+            <h1>NEPTUNE</h1>
+        </div>
+        <div class="auth-container">
+            <div id="auth-signin">
+                <h2>Welcome Back</h2>
+                <input type="text" id="in-user" placeholder="Username">
+                <input type="password" id="in-pass" placeholder="Password">
+                <button class="btn-main" onclick="Auth.login()">Enter Orbit</button>
+                <p style="text-align:center; color:var(--text-dim)">New here? <span onclick="UI.toggleAuth('signup')" style="color:white; font-weight:600; transition:0.3s;">Join the Mission</span></p>
+            </div>
+            <div id="auth-signup" class="hidden">
+                <h2>Create Profile</h2>
+                <input type="text" id="up-user" placeholder="Choose Username">
+                <input type="password" id="up-pass" placeholder="Create Password">
+                <div class="plan-toggle">
+                    <div class="plan-opt active" id="p-free" onclick="UI.setPlan('Free')">FREE<br><small>Half Shows</small></div>
+                    <div class="plan-opt" id="p-prem" onclick="UI.setPlan('Premium')">PREMIUM<br><small>Full Access</small></div>
+                </div>
+                <div id="prem-verify" class="hidden">
+                    <button class="btn-main" style="background:#ff0000; color:white;" onclick="Auth.verifyYT()">Subscribe to Verify</button>
+                </div>
+                <button class="btn-main" id="btn-final-up" onclick="Auth.register()">Initialize</button>
+                <p style="text-align:center; color:var(--text-dim)">Already a pilot? <span onclick="UI.toggleAuth('signin')" style="color:white; font-weight:600">Log In</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-home" class="screen hidden fade-in-init">
+        <nav id="navbar">
+            <div class="nav-links">
+                <div class="brand-logo" style="margin:0">
+                    <svg style="width:30px" viewBox="0 0 100 100"><circle cx="50" cy="50" r="25" fill="none" stroke="#00E5FF" stroke-width="6"/><ellipse cx="50" cy="50" rx="40" ry="12" fill="none" stroke="#00E5FF" stroke-width="4" transform="rotate(-30 50 50)"/><text x="50" y="58" font-family="Inter" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">N</text></svg>
+                </div>
+                <a href="#" class="nav-link active">Home</a>
+                <a href="#" class="nav-link" onclick="UI.showMyList()">My List</a>
+                <a href="#" class="nav-link" onclick="UI.openSettings()">Settings</a>
+                <a href="#" class="nav-link" onclick="Auth.logout()">Logout</a>
+            </div>
+            <div class="nav-right" style="display:flex; gap:20px; align-items:center;">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" placeholder="Titles..." onkeyup="UI.searchContent()">
+                </div>
+                <div id="user-badge" class="badge-plan" style="border: 1px solid var(--accent); padding: 5px 12px; border-radius: 4px; color: var(--accent); font-size: 0.8rem; font-weight: 700;">FREE</div>
+            </div>
+        </nav>
+
+        <section class="hero" id="hero-main" style="background-image: url('https://i.ytimg.com/vi/168HdllCcRE/hq720.jpg');">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <div class="hero-meta"><span>THE B4PL SAGA</span> <span>•</span> <span>2 EPISODES</span> <span>•</span> <span>TRENDING</span></div>
+                <h1 class="hero-title">THE MOVE</h1>
+                <p style="font-size: 1.2rem; margin-bottom: 30px; color: #ddd; line-height: 1.6;">Welcome to B4PL. The stakes are set, the players are introduced, and one move changes everything. High-stakes competition starts here.</p>
+                <div style="display:flex; gap:15px;">
+                    <button class="btn-main" style="width:200px; margin:0;" onclick="UI.resume('b4pl')">▶ Resume</button>
+                    <button class="btn-main" style="width:200px; margin:0; background:rgba(255,255,255,0.1); color:white;" onclick="UI.addToList('b4pl')">+ My List</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-section">
+            <div class="row-container">
+                <div class="row-header"><h2 class="row-title">Blockbuster Movies</h2></div>
+                <div class="shelf" id="movie-shelf"></div>
+            </div>
+            <div class="row-container">
+                <div class="row-header"><h2 class="row-title">Original Series</h2></div>
+                <div class="shelf" id="main-shelf"></div>
+            </div>
+            <div class="row-container hidden" id="my-list-row">
+                <div class="row-header"><h2 class="row-title">My List</h2></div>
+                <div class="shelf" id="list-shelf"></div>
+            </div>
+        </section>
+    </div>
+
+    <div id="player-modal" class="modal">
+        <div id="playback-info">
+            <h2 id="pb-title">Title</h2>
+            <p id="pb-subtitle">Episode Info</p>
+        </div>
+        <div class="close-modal" onclick="UI.closePlayer()">×</div>
+        <iframe id="video-frame" src="" allowfullscreen="true"></iframe>
+        
+        <div id="prem-barrier" class="hidden" style="position:absolute; inset:0; background:rgba(0,0,0,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+            <h1 style="color:var(--danger); font-size:3rem;">PREVIEW ENDED</h1>
+            <p style="margin: 20px 0 40px; color:var(--text-dim);">The Free Tier only allows you to watch the first half.<br>Subscribe to unlock full access and auto-play.</p>
+            <button class="btn-main" style="width:300px" onclick="UI.closePlayer()">Back to Browse</button>
+        </div>
+    </div>
+
+    <div id="episodes-modal" class="modal">
+        <div class="close-modal" onclick="UI.closeModal('episodes-modal')">×</div>
+        <div class="panel-container">
+            <h2 id="ep-modal-title">Select Episode</h2>
+            <div id="ep-list-container"></div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="close-modal" onclick="UI.closeModal('settings-modal')">×</div>
+        <div class="panel-container">
+            <h2>Command Center</h2>
+            
+            <label style="display:block; margin-bottom:10px; color:var(--text-dim); font-size:0.9rem;">Custom Wallpaper URL</label>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <input type="text" id="wall-input" placeholder="Paste image URL here..." style="margin-bottom:0;">
+                <button class="btn-main" style="width:120px; margin-bottom:0;" onclick="Settings.setWallpaper()">Apply</button>
+            </div>
+
+            <label style="display:block; margin-bottom:10px; color:var(--text-dim); font-size:0.9rem;">Stealth Viewing</label>
+            <button class="btn-main" style="background:#555; color:white; width:100%; margin-bottom: 20px;" onclick="Settings.launchBlank()">Launch in about:blank</button>
+
+            <label style="display:block; margin-bottom:10px; color:var(--text-dim); font-size:0.9rem;">Community</label>
+            <button class="btn-main" style="background:rgba(0,229,255,0.1); color:var(--accent); width:100%; border: 1px solid var(--accent);" onclick="Settings.openRequestForm()">📝 Request a Movie or Show</button>
+
+            <div class="copyright-box">
+                <p>Copyright 2026 <span>potatomations.ani</span> all right reserved.</p>
+                <p>All video content remains the property and copyright of their respective creators. This platform is an independent aggregation tool.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONTENT = [
+            { 
+                id: 'b4pl', 
+                title: 'The B4PL Saga', 
+                img: 'https://i.ytimg.com/vi/168HdllCcRE/hq720.jpg', 
+                type: 'series',
+                episodes: [
+                    { id: 'ep1', title: 'Episode 1: The Move', url: 'https://docs.google.com/presentation/d/1A2kpsKWt0bxY0byVlU9D0CZdYFKTViMrLkyfN_lKKG4/embed', duration: 600000 },
+                    { id: 'ep2', title: 'Episode 2: Dodgie', url: 'https://docs.google.com/presentation/d/13aV9BH-vghrFEsI-JA78CxyEd3ELk40Z-pFKbuBp8Z0/embed', duration: 600000 }
+                ]
+            },
+            { 
+                id: 'movie1', 
+                title: 'Astrodude: The Movie', 
+                img: 'https://i.kickstarter.com/assets/052/604/641/fbc8935607628e23c9c76eccc6793a54_original.jpg?anim=false&fit=cover&gravity=auto&height=873&origin=ugc&q=92&v=1771077180&width=1552&sig=qQBklnl91my8OZ3aYzEhDESvUZE0ZXEXvX9gLr9D8S0%3D', 
+                url: 'https://docs.google.com/presentation/d/1pFjMRiOLgF-U57Tk-UkTqK2WjYpJT4UPV6B1J9xqcRY/embed', 
+                duration: 3600000, 
+                type: 'movie' 
+            }
+        ];
+
+        const STATE = {
+            user: JSON.parse(localStorage.getItem('nep_user')),
+            myList: JSON.parse(localStorage.getItem('nep_list')) || [],
+            progress: JSON.parse(localStorage.getItem('nep_progress')) || {},
+            currentPlan: 'Free'
+        };
+
+        const cursor = document.getElementById('custom-cursor');
+        const dot = document.getElementById('cursor-dot');
+        document.addEventListener('mousemove', (e) => {
+            cursor.animate({ left: `${e.clientX}px`, top: `${e.clientY}px` }, { duration: 500, fill: "forwards" });
+            dot.style.left = `${e.clientX}px`; dot.style.top = `${e.clientY}px`;
+        });
+        document.addEventListener('mousedown', () => { cursor.style.width = '40px'; cursor.style.height = '40px'; cursor.style.backgroundColor = 'var(--accent-glow)'; });
+        document.addEventListener('mouseup', () => { cursor.style.width = '20px'; cursor.style.height = '20px'; cursor.style.backgroundColor = 'transparent'; });
+
+        const Settings = {
+            init() {
+                const savedWall = localStorage.getItem('nep_wall');
+                if (savedWall) {
+                    document.getElementById('global-bg').style.backgroundImage = `url('${savedWall}')`;
+                    document.getElementById('wall-input').value = savedWall;
+                }
+            },
+            setWallpaper() {
+                const url = document.getElementById('wall-input').value;
+                if(url) {
+                    document.getElementById('global-bg').style.backgroundImage = `url('${url}')`;
+                    localStorage.setItem('nep_wall', url);
+                    UI.notify("Wallpaper Updated");
+                } else {
+                    document.getElementById('global-bg').style.backgroundImage = `none`;
+                    localStorage.removeItem('nep_wall');
+                    UI.notify("Wallpaper Cleared");
+                }
+            },
+            launchBlank() {
+                let win = window.open('about:blank', '_blank');
+                if (win) {
+                    win.document.title = "Google"; 
+                    win.document.body.style.margin = "0";
+                    win.document.body.style.height = "100vh";
+                    win.document.body.style.overflow = "hidden";
+                    
+                    let iframe = win.document.createElement('iframe');
+                    iframe.style.border = "none";
+                    iframe.style.width = "100%";
+                    iframe.style.height = "100%";
+                    iframe.style.margin = "0";
+                    iframe.src = window.location.href;
+                    
+                    win.document.body.appendChild(iframe);
+                    UI.notify("Stealth window launched.");
+                } else {
+                    UI.notify("Popup blocker prevented launch!");
+                }
+            },
+            // NEW: Open Google Form
+            openRequestForm() {
+                window.open('https://docs.google.com/forms/d/11z_xJrCMqYoC7a-ixenU50l6FLqAWIdhMQZwA3KKn6c/viewform', '_blank');
+            }
+        };
+
+        const Auth = {
+            login() {
+                const u = document.getElementById('in-user').value;
+                const p = document.getElementById('in-pass').value;
+                const db = JSON.parse(localStorage.getItem('nep_db') || '{}');
+                if (db[u] && db[u].pass === p) {
+                    STATE.user = db[u]; localStorage.setItem('nep_user', JSON.stringify(STATE.user));
+                    UI.notify(`Welcome Commander ${u}`); UI.transition('screen-splash', 'screen-home');
+                } else { UI.notify("Invalid Signal. Access Denied."); }
+            },
+            register() {
+                const u = document.getElementById('up-user').value;
+                const p = document.getElementById('up-pass').value;
+                if (!u || !p) return UI.notify("Data incomplete.");
+                const db = JSON.parse(localStorage.getItem('nep_db') || '{}');
+                db[u] = { user: u, pass: p, plan: STATE.currentPlan };
+                localStorage.setItem('nep_db', JSON.stringify(db));
+                STATE.user = db[u]; localStorage.setItem('nep_user', JSON.stringify(STATE.user));
+                UI.transition('screen-splash', 'screen-home');
+            },
+            verifyYT() {
+                UI.notify("Rerouting to Verification..."); window.open('https://youtube.com/@kingoftheduck875', '_blank');
+                setTimeout(() => { UI.notify("Signature Verified. Premium Unlocked."); STATE.currentPlan = 'Premium';
+                    document.getElementById('btn-final-up').classList.remove('hidden');
+                    document.getElementById('prem-verify').classList.add('hidden');
+                }, 3000);
+            },
+            logout() { localStorage.removeItem('nep_user'); location.reload(); }
+        };
+
+        const UI = {
+            init() {
+                this.renderShelf('main-shelf', CONTENT.filter(c => c.type === 'series'));
+                this.renderShelf('movie-shelf', CONTENT.filter(c => c.type === 'movie'));
+                Settings.init(); 
+                if (STATE.user) {
+                    document.getElementById('screen-splash').classList.add('hidden');
+                    document.getElementById('screen-home').classList.remove('hidden', 'fade-in-init');
+                    document.getElementById('user-badge').innerText = STATE.user.plan;
+                }
+                window.addEventListener('scroll', () => { document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50); });
+            },
+            transition(outId, inId) {
+                const outEl = document.getElementById(outId); const inEl = document.getElementById(inId);
+                outEl.classList.add('fade-out');
+                setTimeout(() => {
+                    outEl.classList.add('hidden'); inEl.classList.remove('hidden');
+                    setTimeout(() => inEl.classList.remove('fade-in-init'), 50);
+                    if(inId === 'screen-home') document.getElementById('user-badge').innerText = STATE.user.plan;
+                }, 800);
+            },
+            toggleAuth(mode) {
+                document.getElementById('auth-signin').classList.toggle('hidden', mode === 'signup');
+                document.getElementById('auth-signup').classList.toggle('hidden', mode === 'signin');
+            },
+            setPlan(p) {
+                STATE.currentPlan = p;
+                document.getElementById('p-free').classList.toggle('active', p === 'Free');
+                document.getElementById('p-prem').classList.toggle('active', p === 'Premium');
+                document.getElementById('prem-verify').classList.toggle('hidden', p === 'Free');
+                document.getElementById('btn-final-up').classList.toggle('hidden', p === 'Premium');
+            },
+            renderShelf(targetId, data) {
+                const target = document.getElementById(targetId);
+                target.innerHTML = data.map(item => `
+                    <div class="card" onclick="UI.resume('${item.id}')">
+                        ${item.type === 'series' ? `<div class="btn-more" onclick="event.stopPropagation(); UI.openEpisodesModal('${item.id}')">⋮</div>` : ''}
+                        <div class="btn-list-add" onclick="event.stopPropagation(); UI.addToList('${item.id}')">+</div>
+                        <img src="${item.img}" alt="${item.title}">
+                        <div class="card-info">
+                            <h3 style="font-size:1.1rem; margin-bottom:5px;">${item.title}</h3>
+                            <p style="font-size:0.8rem; color:var(--accent)">
+                                ${item.type === 'series' ? 
+                                    (STATE.progress[item.id] !== undefined ? `RESUME EP ${STATE.progress[item.id] + 1}` : `${item.episodes.length} EPISODES`) 
+                                    : 'MOVIE'}
+                            </p>
+                        </div>
+                    </div>
+                `).join('');
+            },
+            
+            resume(id) {
+                let targetEp = 0;
+                if (STATE.progress[id] !== undefined) {
+                    targetEp = STATE.progress[id];
+                }
+                this.play(id, targetEp);
+            },
+
+            openEpisodesModal(id) {
+                const item = CONTENT.find(v => v.id === id);
+                if(item.type !== 'series') return;
+                
+                document.getElementById('ep-modal-title').innerText = item.title;
+                const container = document.getElementById('ep-list-container');
+                
+                container.innerHTML = item.episodes.map((ep, index) => {
+                    const isWatched = STATE.progress[id] === index ? '<span style="color:var(--accent)"> (In Progress)</span>' : '';
+                    return `
+                    <div class="ep-row">
+                        <div>
+                            <h4>${ep.title}${isWatched}</h4>
+                            <span>10m</span>
+                        </div>
+                        <div class="ep-play-btn" onclick="UI.play('${item.id}', ${index}); UI.closeModal('episodes-modal');">PLAY</div>
+                    </div>
+                `}).join('');
+                
+                document.getElementById('episodes-modal').classList.add('active');
+            },
+
+            openSettings() { document.getElementById('settings-modal').classList.add('active'); },
+            closeModal(modalId) { document.getElementById(modalId).classList.remove('active'); },
+
+            play(id, epIndex = 0) {
+                const item = CONTENT.find(v => v.id === id);
+                const modal = document.getElementById('player-modal');
+                const frame = document.getElementById('video-frame');
+                
+                let targetUrl, targetDuration, titleStr, subStr;
+
+                if (item.type === 'series') {
+                    if (epIndex >= item.episodes.length) {
+                        this.notify("Series Completed!");
+                        this.closePlayer();
+                        return;
+                    }
+                    
+                    STATE.progress[id] = epIndex;
+                    localStorage.setItem('nep_progress', JSON.stringify(STATE.progress));
+                    
+                    targetUrl = item.episodes[epIndex].url;
+                    targetDuration = item.episodes[epIndex].duration;
+                    titleStr = item.title;
+                    subStr = item.episodes[epIndex].title;
+                } else {
+                    targetUrl = item.url;
+                    targetDuration = item.duration;
+                    titleStr = item.title;
+                    subStr = "Feature Film";
+                }
+
+                document.getElementById('pb-title').innerText = titleStr;
+                document.getElementById('pb-subtitle').innerText = subStr;
+                frame.src = targetUrl + "?start=true";
+                modal.classList.add('active');
+                
+                if(window.playbackTimer) clearTimeout(window.playbackTimer);
+
+                if (STATE.user.plan === 'Free') {
+                    const halfTime = targetDuration / 2;
+                    window.playbackTimer = setTimeout(() => {
+                        document.getElementById('prem-barrier').classList.remove('hidden');
+                        frame.src = ""; 
+                    }, halfTime);
+                } else {
+                    if (item.type === 'series') {
+                        window.playbackTimer = setTimeout(() => {
+                            this.notify("Auto-playing next episode...");
+                            this.play(id, epIndex + 1);
+                        }, targetDuration);
+                    }
+                }
+                
+                this.renderShelf('main-shelf', CONTENT.filter(c => c.type === 'series'));
+            },
+            closePlayer() {
+                document.getElementById('player-modal').classList.remove('active');
+                document.getElementById('video-frame').src = "";
+                document.getElementById('prem-barrier').classList.add('hidden');
+                if(window.playbackTimer) clearTimeout(window.playbackTimer);
+            },
+            addToList(id) {
+                if (!STATE.myList.includes(id)) {
+                    STATE.myList.push(id); localStorage.setItem('nep_list', JSON.stringify(STATE.myList));
+                    this.notify("Added to Mission Control");
+                } else { this.notify("Already in queue"); }
+            },
+            showMyList() {
+                const row = document.getElementById('my-list-row');
+                const listData = CONTENT.filter(c => STATE.myList.includes(c.id));
+                this.renderShelf('list-shelf', listData);
+                row.classList.remove('hidden');
+                window.scrollTo({ top: row.offsetTop - 100, behavior: 'smooth' });
+            },
+            searchContent() {
+                const query = document.getElementById('search-input').value.toLowerCase();
+                const filtered = CONTENT.filter(c => c.title.toLowerCase().includes(query));
+                this.renderShelf('main-shelf', filtered.filter(c => c.type === 'series'));
+                this.renderShelf('movie-shelf', filtered.filter(c => c.type === 'movie'));
+            },
+            notify(msg) {
+                const t = document.getElementById('toast');
+                t.innerText = msg; t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 3000);
+            }
+        };
+
+        UI.init();
+    </script>
+</body>
+</html>
